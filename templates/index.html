@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Emotion Detection</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        max-width: 600px;
+        width: 100%;
+      }
+
+      h1 {
+        color: #333;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 28px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-weight: 500;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        resize: vertical;
+        min-height: 120px;
+        transition: border-color 0.3s;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      button {
+        width: 100%;
+        padding: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .result {
+        display: none;
+        margin-top: 30px;
+        padding: 20px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+      }
+
+      .result.show {
+        display: block;
+      }
+
+      .emotion-scores {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .emotion-score {
+        background: white;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .emotion-score h4 {
+        color: #667eea;
+        margin-bottom: 5px;
+        font-size: 14px;
+        text-transform: uppercase;
+      }
+
+      .emotion-score p {
+        color: #333;
+        font-size: 18px;
+        font-weight: 600;
+      }
+
+      .dominant {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .dominant h3 {
+        font-size: 14px;
+        margin-bottom: 8px;
+        opacity: 0.9;
+      }
+
+      .dominant p {
+        font-size: 28px;
+        font-weight: 700;
+      }
+
+      .error {
+        background-color: #fee;
+        border-left-color: #f44336;
+        color: #c33;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        display: none;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        margin-top: 20px;
+      }
+
+      .loading.show {
+        display: block;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🎭 Emotion Detection</h1>
+
+      <form id="emotionForm">
+        <div class="form-group">
+          <label for="textInput">Enter text to analyze:</label>
+          <textarea
+            id="textInput"
+            placeholder="Type something to detect emotions..."
+          ></textarea>
+        </div>
+        <button type="submit">Analyze Emotions</button>
+      </form>
+
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+      </div>
+
+      <div class="error" id="error"></div>
+
+      <div class="result" id="result">
+        <div class="emotion-scores" id="emotionScores"></div>
+        <div class="dominant" id="dominant"></div>
+      </div>
+    </div>
+
+    <script>
+      document
+        .getElementById("emotionForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const text = document.getElementById("textInput").value;
+          const loading = document.getElementById("loading");
+          const error = document.getElementById("error");
+          const result = document.getElementById("result");
+
+          // Reset UI
+          loading.classList.add("show");
+          error.classList.remove("show");
+          result.classList.remove("show");
+
+          try {
+            const response = await fetch("/emotionDetector", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ text }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+              throw new Error(data.error || "Error analyzing emotions");
+            }
+
+            // Display results
+            displayResults(data);
+            result.classList.add("show");
+          } catch (err) {
+            error.textContent =
+              err.message || "An error occurred while processing your request.";
+            error.classList.add("show");
+          } finally {
+            loading.classList.remove("show");
+          }
+        });
+
+      function displayResults(data) {
+        const emotionScores = document.getElementById("emotionScores");
+        const dominant = document.getElementById("dominant");
+
+        const emotions = ["anger", "disgust", "fear", "joy", "sadness"];
+
+        emotionScores.innerHTML = emotions
+          .map(
+            (emotion) => `
+                <div class="emotion-score">
+                    <h4>${emotion}</h4>
+                    <p>${(data[emotion] * 100).toFixed(2)}%</p>
+                </div>
+            `,
+          )
+          .join("");
+
+        dominant.innerHTML = `
+                <h3>Dominant Emotion</h3>
+                <p>${data.dominant_emotion}</p>
+            `;
+      }
+    </script>
+  </body>
+</html>

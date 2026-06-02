@@ -1,0 +1,7 @@
+[MASTER]
+max-line-length=100
+disable=
+    C0111,
+    R0914,
+good-names=
+    i,j,k,ex,Run,_
