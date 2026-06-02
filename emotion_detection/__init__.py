@@ -1,3 +1,3 @@
-"""
-Emotion Detection Module
-"""
+"""Emotion Detection package."""
+
+from .emotion_detector import emotion_detector
